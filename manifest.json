@@ -1,0 +1,14 @@
+{
+  "name": "Marginalia — Your Reading Shelf",
+  "short_name": "Marginalia",
+  "description": "Log the books you read, rate them, and get suggestions for what to read next.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F6EFE2",
+  "theme_color": "#F6EFE2",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
