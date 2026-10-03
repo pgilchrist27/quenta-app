@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quenta</title>
+<meta name="theme-color" content="#F6EFE2">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6EFE2;
+    --paper-soft:#EFE6D4;
+    --card:#FFFCF5;
+    --ink:#2B2117;
+    --ink-soft:#5C5142;
+    --wine:#7A3B34;
+    --wine-deep:#5C2C27;
+    --moss:#4B5D45;
+    --gold:#A9782E;
+    --rule: rgba(43,33,23,0.16);
+    --radius: 3px;
+    box-sizing:border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#20190F;
+      --paper-soft:#241D13;
+      --card:#2A2115;
+      --ink:#EDE3D0;
+      --ink-soft:#B9AC93;
+      --wine:#D98E7F;
+      --wine-deep:#E8A99B;
+      --moss:#9AB48E;
+      --gold:#D9B36C;
+      --rule: rgba(237,227,208,0.16);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#20190F; --paper-soft:#241D13; --card:#2A2115; --ink:#EDE3D0;
+    --ink-soft:#B9AC93; --wine:#D98E7F; --wine-deep:#E8A99B; --moss:#9AB48E;
+    --gold:#D9B36C; --rule: rgba(237,227,208,0.16);
+  }
+  html{ scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 1px 1px, rgba(43,33,23,0.05) 1px, transparent 0) 0 0/16px 16px,
+      var(--paper);
+    color:var(--ink);
+    font-family:'Lora', Georgia, serif;
+    font-size:16px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) body{
+      background:
+        radial-gradient(circle at 1px 1px, rgba(237,227,208,0.05) 1px, transparent 0) 0 0/16px 16px,
+        var(--paper);
+    }
+  }
+  :root[data-theme="dark"] body{
+    background:
+      radial-gradient(circle at 1px 1px, rgba(237,227,208,0.05) 1px, transparent 0) 0 0/16px 16px,
+      var(--paper);
+  }
+  .wrap{
+    max-width:640px;
+    margin:0 auto;
+    padding:2.5rem 1.25rem 5rem;
+  }
+  header.masthead{
+    border-bottom:3px double var(--ink);
+    padding-bottom:1rem;
+    margin-bottom:1rem;
+    position:relative;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:2.5rem;
+    letter-spacing:-0.01em;
+    margin:0 0 0.15rem;
+  }
+  .tagline{
+    color:var(--ink-soft);
+    font-style:italic;
+    font-size:0.95rem;
+    margin:0;
+  }
+  .masthead-mark{
+    text-align:center;
+    color:var(--gold);
+    opacity:0.6;
+    font-size:1.05rem;
+    margin:0.9rem 0 2rem;
+  }
+  section{ margin-bottom:2.75rem; }
+  h2{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-style:italic;
+    font-size:1.3rem;
+    margin:0 0 1rem;
+    padding-bottom:0.5rem;
+    border-bottom:1px solid var(--rule);
+    color:var(--wine-deep);
+  }
+  h2::before{
+    content:"❧  ";
+    color:var(--gold);
+    font-style:normal;
+  }
+  /* --- Add book form --- */
+  .search-row{
+    display:flex;
+    gap:0.5rem;
+    margin-bottom:0.75rem;
+  }
+  input[type="text"], textarea{
+    font-family:'Lora', serif;
+    font-size:1rem;
+    background:var(--card);
+    border:1px solid var(--rule);
+    border-radius:var(--radius);
+    padding:0.6rem 0.75rem;
+    color:var(--ink);
+    width:100%;
+  }
+  input[type="text"]:focus, textarea:focus, button:focus-visible{
+    outline:2px solid var(--wine);
+    outline-offset:1px;
+  }
+  button{
+    font-family:'Lora', serif;
+    font-size:0.95rem;
+    background:var(--wine);
+    color:var(--paper);
+    border:none;
+    border-radius:var(--radius);
+    padding:0.6rem 1.1rem;
+    cursor:pointer;
+  }
+  button.ghost{
+    background:transparent;
+    color:var(--wine-deep);
+    border:1px solid var(--wine-deep);
+  }
+  button:disabled{ opacity:0.5; cursor:default; }
+  #searchResults{ display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1rem; }
+  .result-row{
+    display:flex;
+    align-items:center;
+    gap:0.75rem;
+    padding:0.5rem;
+    border:1px solid var(--rule);
+    border-radius:var(--radius);
+    background:var(--card);
+    box-shadow:0 1px 2px rgba(43,33,23,0.07);
+    cursor:pointer;
+    text-align:left;
+  }
+  .result-row:hover{ border-color:var(--wine); box-shadow:0 2px 5px rgba(43,33,23,0.1); }
+  .result-row img{ width:34px; height:50px; object-fit:cover; background:var(--paper-soft); flex-shrink:0; }
+  .result-meta{ font-size:0.9rem; }
+  .result-meta .r-title{ font-weight:500; }
+  .result-meta .r-author{ color:var(--ink-soft); font-size:0.85rem; }
+
+  .review-form{
+    display:none;
+    border:1px solid var(--rule);
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:1.1rem 1.1rem 1.2rem;
+    box-shadow:0 0 0 4px var(--paper), 0 0 0 5px var(--rule), 0 2px 6px rgba(43,33,23,0.08);
+  }
+  .review-form.active{ display:block; }
+  .review-book-head{ display:flex; gap:0.75rem; margin-bottom:0.9rem; }
+  .review-book-head img{ width:48px; height:70px; object-fit:cover; background:var(--paper-soft); flex-shrink:0; }
+  .review-book-head .rb-title{ font-family:'Fraunces',serif; font-weight:600; font-size:1.05rem; }
+  .review-book-head .rb-author{ color:var(--ink-soft); font-size:0.9rem; }
+  label{ display:block; font-size:0.82rem; color:var(--ink-soft); margin:0.8rem 0 0.3rem; }
+  .stars{ font-size:1.7rem; letter-spacing:0.12em; user-select:none; }
+  .stars.interactive .star-slot{ cursor:pointer; }
+  .star-slot{ position:relative; display:inline-block; }
+  .star-back{ color:var(--rule); }
+  .star-front{
+    position:absolute; left:0; top:0;
+    overflow:hidden; white-space:nowrap;
+    color:var(--gold);
+    pointer-events:none;
+  }
+  .rating-value{ font-size:0.85rem; color:var(--ink-soft); margin-left:0.5rem; vertical-align:0.15em; }
+  .form-actions{ display:flex; gap:0.6rem; margin-top:1.1rem; }
+
+  /* --- Library list --- */
+  .empty{ color:var(--ink-soft); font-style:italic; }
+  .shelf-toolbar{
+    display:flex;
+    align-items:center;
+    gap:0.75rem;
+    margin-bottom:1rem;
+    padding-bottom:0.75rem;
+    border-bottom:1px dashed var(--rule);
+  }
+  .shelf-toolbar .sel-count{ font-size:0.85rem; color:var(--ink-soft); font-style:italic; }
+  .shelf-toolbar button{ font-size:0.85rem; padding:0.45rem 0.9rem; }
+  .book-entry{
+    display:flex;
+    align-items:flex-start;
+    gap:0.85rem;
+    padding:1rem 0.9rem 1rem 0.75rem;
+    margin-bottom:0.6rem;
+    border-left:5px solid var(--gold);
+    background:var(--card);
+    border-radius:0 var(--radius) var(--radius) 0;
+    box-shadow:0 1px 2px rgba(43,33,23,0.06);
+  }
+  .book-entry .sel-check{
+    margin-top:0.3rem;
+    accent-color:var(--wine);
+    width:16px; height:16px;
+    flex-shrink:0;
+  }
+  .book-entry img{ width:44px; height:64px; object-fit:cover; background:var(--paper-soft); flex-shrink:0; }
+  .book-entry .bt{ font-family:'Fraunces', serif; font-weight:600; font-size:1.05rem; line-height:1.3; }
+  .book-entry .ba{ color:var(--ink-soft); font-size:0.88rem; margin-bottom:0.25rem; }
+  .book-entry .stars-static{ font-size:1rem; letter-spacing:0.1em; }
+  .book-entry .tags{ margin-top:0.4rem; }
+  .tag{
+    display:inline-block;
+    font-size:0.75rem;
+    color:var(--moss);
+    border:1px solid var(--moss);
+    border-radius:999px;
+    padding:0.05rem 0.55rem;
+    margin:0.15rem 0.3rem 0 0;
+  }
+  .note{ margin-top:0.4rem; font-size:0.9rem; color:var(--ink-soft); font-style:italic; }
+  .entry-actions{ margin-left:auto; flex-shrink:0; }
+  .entry-actions button{ background:transparent; color:var(--ink-soft); border:none; padding:0.2rem; font-size:0.8rem; text-decoration:underline; }
+
+  /* --- Recommendations --- */
+  .rec-grid{ display:flex; flex-direction:column; gap:0.7rem; }
+  .rec-card{
+    display:flex;
+    gap:0.75rem;
+    border:1px solid var(--rule);
+    border-radius:var(--radius);
+    background:var(--card);
+    box-shadow:0 1px 2px rgba(43,33,23,0.06);
+    padding:0.7rem;
+  }
+  .rec-card img{ width:40px; height:58px; object-fit:cover; background:var(--paper-soft); flex-shrink:0; }
+  .rec-card .rc-title{ font-family:'Fraunces', serif; font-weight:600; font-size:0.98rem; }
+  .rec-card .rc-author{ color:var(--ink-soft); font-size:0.85rem; }
+  .rec-card .rc-why{ font-size:0.8rem; color:var(--moss); margin-top:0.2rem; }
+  .status-msg{ color:var(--ink-soft); font-size:0.9rem; font-style:italic; }
+  #selectionRecArea{
+    display:none;
+    margin-top:1rem;
+    padding-top:1rem;
+    border-top:1px dashed var(--rule);
+  }
+  #selectionRecArea.active{ display:block; }
+  #selectionRecArea .sr-heading{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-size:1rem;
+    color:var(--wine-deep);
+    margin:0 0 0.7rem;
+  }
+  footer{ text-align:center; color:var(--ink-soft); font-size:0.8rem; margin-top:3rem; }
+
+  /* --- Auth gate --- */
+  #authGate{ max-width:420px; margin:3rem auto; padding:0 1.25rem; }
+  #authGate h1{ text-align:center; }
+  #authGate .tagline{ text-align:center; margin-bottom:2rem; }
+  .auth-card{
+    border:1px solid var(--rule);
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:0 0 0 4px var(--paper), 0 0 0 5px var(--rule), 0 2px 6px rgba(43,33,23,0.08);
+    padding:1.3rem 1.3rem 1.5rem;
+  }
+  .auth-tabs{ display:flex; gap:1.5rem; margin-bottom:1.1rem; border-bottom:1px solid var(--rule); }
+  .auth-tab{
+    background:none; border:none; padding:0.3rem 0 0.7rem; color:var(--ink-soft);
+    font-family:'Fraunces',serif; font-style:italic; font-size:1.05rem; cursor:pointer;
+    border-bottom:2px solid transparent; margin-bottom:-1px; border-radius:0;
+  }
+  .auth-tab.active{ color:var(--wine-deep); border-bottom-color:var(--wine); }
+  .auth-form{ display:none; }
+  .auth-form.active{ display:block; }
+  .auth-error{ color:var(--wine); font-size:0.85rem; margin:0.6rem 0 0; min-height:1.2em; }
+  .account-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:0.85rem; color:var(--ink-soft); margin-bottom:1.5rem;
+  }
+  .account-bar button{ font-size:0.8rem; padding:0.35rem 0.75rem; }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="authGate" style="display:none;">
+  <h1>Quenta</h1>
+  <p class="tagline">Your own account of what you've read — and what to read next.</p>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button type="button" class="auth-tab active" id="tabLogin">Log in</button>
+      <button type="button" class="auth-tab" id="tabSignup">Sign up</button>
+    </div>
+
+    <form class="auth-form active" id="loginForm">
+      <label for="loginEmail">Email</label>
+      <input type="email" id="loginEmail" required autocomplete="email">
+      <label for="loginPassword">Password</label>
+      <input type="password" id="loginPassword" required autocomplete="current-password">
+      <div class="form-actions"><button type="submit">Log in</button></div>
+      <p class="auth-error" id="loginError"></p>
+    </form>
+
+    <form class="auth-form" id="signupForm">
+      <label for="signupEmail">Email</label>
+      <input type="email" id="signupEmail" required autocomplete="email">
+      <label for="signupPassword">Password (6+ characters)</label>
+      <input type="password" id="signupPassword" required autocomplete="new-password" minlength="6">
+      <div class="form-actions"><button type="submit">Create account</button></div>
+      <p class="auth-error" id="signupError"></p>
+    </form>
+  </div>
+</div>
+
+<div class="wrap" id="appContent" style="display:none;">
+  <header class="masthead">
+    <h1>Quenta</h1>
+    <p class="tagline">Your own account of what you've read — and what to read next.</p>
+  </header>
+  <p class="masthead-mark">❦</p>
+
+  <div class="account-bar">
+    <span id="accountEmail"></span>
+    <button type="button" class="ghost" id="logoutBtn">Log out</button>
+  </div>
+
+  <section id="addSection">
+    <h2>Log a book</h2>
+    <div class="search-row">
+      <input type="text" id="searchInput" placeholder="Start typing a title…" autocomplete="off">
+    </div>
+    <div id="searchResults"></div>
+
+    <form class="review-form" id="reviewForm">
+      <div class="review-book-head">
+        <img id="rbCover" alt="">
+        <div>
+          <div class="rb-title" id="rbTitle"></div>
+          <div class="rb-author" id="rbAuthor"></div>
+        </div>
+      </div>
+
+      <label>Your rating <span class="rating-value" id="ratingValue"></span></label>
+      <div class="stars interactive" id="starInput" role="slider" aria-label="Rating" aria-valuemin="0.5" aria-valuemax="5" aria-valuenow="0" tabindex="0">
+        <span class="star-slot" data-i="1"><span class="star-back">★</span><span class="star-front" style="width:0%">★</span></span><span class="star-slot" data-i="2"><span class="star-back">★</span><span class="star-front" style="width:0%">★</span></span><span class="star-slot" data-i="3"><span class="star-back">★</span><span class="star-front" style="width:0%">★</span></span><span class="star-slot" data-i="4"><span class="star-back">★</span><span class="star-front" style="width:0%">★</span></span><span class="star-slot" data-i="5"><span class="star-back">★</span><span class="star-front" style="width:0%">★</span></span>
+      </div>
+      <p class="status-msg" style="margin:0.35rem 0 0;">Tap the left half of a star for a half rating.</p>
+
+      <label for="tagsInput">Tags / genres (comma separated)</label>
+      <input type="text" id="tagsInput" placeholder="e.g. gothic, slow-burn, essays">
+
+      <label for="noteInput">A short note</label>
+      <textarea id="noteInput" rows="3" placeholder="What stuck with you?"></textarea>
+
+      <div class="form-actions">
+        <button type="submit">Save to shelf</button>
+        <button type="button" class="ghost" id="cancelReview">Cancel</button>
+      </div>
+    </form>
+  </section>
+
+  <section id="shelfSection">
+    <h2>Your shelf</h2>
+    <div class="shelf-toolbar">
+      <span class="sel-count" id="selCount">0 selected</span>
+      <button type="button" class="ghost" id="recFromSelectionBtn" disabled>Get recommendations from selection</button>
+    </div>
+    <div id="shelfList"><p class="empty">Nothing logged yet — search for a book above to begin.</p></div>
+    <div id="selectionRecArea">
+      <p class="sr-heading">From your selection</p>
+      <div id="selectionRecStatus" class="status-msg"></div>
+      <div class="rec-grid" id="selectionRecGrid"></div>
+    </div>
+  </section>
+
+  <section id="recSection">
+    <h2>What to read next</h2>
+    <div id="recStatus" class="status-msg">Rate a few books 4★ and up to get suggestions.</div>
+    <div class="rec-grid" id="recGrid"></div>
+  </section>
+
+  <footer>Signed in — your shelf syncs to your account.</footer>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {
+  getFirestore, collection, doc, setDoc, addDoc, deleteDoc,
+  onSnapshot, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCGAiS32ZTZm_ZY5cJ46GwhIC4EQCgCf84",
+  authDomain: "quenta-app.firebaseapp.com",
+  projectId: "quenta-app",
+  storageBucket: "quenta-app.firebasestorage.app",
+  messagingSenderId: "472448310719",
+  appId: "1:472448310719:web:938333bba3cf23f2c1150a"
+};
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+// Turns an email into a safe Firestore document ID (Firestore IDs can't contain "/", and
+// "." in the middle of an ID is allowed but we sanitize anyway to keep this predictable).
+function emailDocId(email){ return email.trim().toLowerCase().replace(/[.#$\[\]]/g, '_'); }
+
+let currentUser = null;
+let unsubscribeShelf = null;
+
+const OL_SEARCH = "https://openlibrary.org/search.json";
+const OL_COVER = (id, size) => id ? `https://covers.openlibrary.org/b/id/${id}-${size}.jpg` : "";
+
+let shelf = [];
+let pendingBook = null;
+let pendingRating = 0;
+
+// ---- Auth UI wiring ----
+const authGate = document.getElementById('authGate');
+const appContent = document.getElementById('appContent');
+const tabLogin = document.getElementById('tabLogin');
+const tabSignup = document.getElementById('tabSignup');
+const loginForm = document.getElementById('loginForm');
+const signupForm = document.getElementById('signupForm');
+
+tabLogin.addEventListener('click', () => {
+  tabLogin.classList.add('active'); tabSignup.classList.remove('active');
+  loginForm.classList.add('active'); signupForm.classList.remove('active');
+});
+tabSignup.addEventListener('click', () => {
+  tabSignup.classList.add('active'); tabLogin.classList.remove('active');
+  signupForm.classList.add('active'); loginForm.classList.remove('active');
+});
+
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('loginError');
+  errorEl.textContent = "";
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  try{
+    await signInWithEmailAndPassword(auth, email, password);
+  }catch(err){
+    errorEl.textContent = friendlyAuthError(err);
+  }
+});
+
+signupForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('signupError');
+  errorEl.textContent = "";
+  const email = document.getElementById('signupEmail').value.trim();
+  const password = document.getElementById('signupPassword').value;
+  try{
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    // Lay groundwork for the friends feature: a public profile doc and an email→uid lookup
+    await setDoc(doc(db, 'users', cred.user.uid), { email: cred.user.email, createdAt: serverTimestamp() });
+    await setDoc(doc(db, 'emailIndex', emailDocId(cred.user.email)), { uid: cred.user.uid });
+  }catch(err){
+    errorEl.textContent = friendlyAuthError(err);
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+
+function friendlyAuthError(err){
+  const code = err && err.code || "";
+  if(code.includes('email-already-in-use')) return "That email already has an account — try logging in instead.";
+  if(code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) return "Email or password doesn't match an account.";
+  if(code.includes('weak-password')) return "Password needs to be at least 6 characters.";
+  if(code.includes('invalid-email')) return "That doesn't look like a valid email.";
+  return "Something went wrong — try again.";
+}
+
+onAuthStateChanged(auth, (user) => {
+  if(unsubscribeShelf){ unsubscribeShelf(); unsubscribeShelf = null; }
+  if(user){
+    currentUser = user;
+    authGate.style.display = 'none';
+    appContent.style.display = 'block';
+    document.getElementById('accountEmail').textContent = user.email;
+    const shelfQuery = query(collection(db, 'users', user.uid, 'books'), orderBy('addedAt', 'desc'));
+    unsubscribeShelf = onSnapshot(shelfQuery, (snapshot) => {
+      shelf = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderShelf();
+      loadRecommendations();
+    });
+  } else {
+    currentUser = null;
+    shelf = [];
+    appContent.style.display = 'none';
+    authGate.style.display = 'block';
+  }
+});
+
+// ---- Shelf storage (Firestore, per account) ----
+function addBookToShelf(bookData){
+  return addDoc(collection(db, 'users', currentUser.uid, 'books'), {
+    ...bookData,
+    addedAt: serverTimestamp()
+  });
+}
+function removeBookFromShelf(bookId){
+  return deleteDoc(doc(db, 'users', currentUser.uid, 'books', bookId));
+}
+
+// ---- Search ----
+const searchInput = document.getElementById('searchInput');
+const searchResults = document.getElementById('searchResults');
+let searchTimer = null;
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  const q = searchInput.value.trim();
+  if(q.length < 3){ searchResults.innerHTML = ""; return; }
+  searchTimer = setTimeout(() => runSearch(q), 400);
+});
+
+let searchSeq = 0;
+
+async function runSearch(q){
+  const seq = ++searchSeq;
+  searchResults.innerHTML = `<p class="status-msg">Searching…</p>`;
+  try{
+    const res = await fetch(`${OL_SEARCH}?q=${encodeURIComponent(q)}&limit=6&fields=key,title,author_name,cover_i,subject`);
+    if(!res.ok) throw new Error("bad response");
+    const data = await res.json();
+    if(seq !== searchSeq) return; // a newer search has already superseded this one
+    renderSearchResults(data.docs || []);
+  }catch(e){
+    if(seq !== searchSeq) return;
+    searchResults.innerHTML = `<p class="status-msg">Couldn't reach Open Library right now. Try again in a moment.</p>`;
+  }
+}
+
+function renderSearchResults(docs){
+  if(docs.length === 0){
+    searchResults.innerHTML = `<p class="status-msg">No matches. Try a different spelling.</p>`;
+    return;
+  }
+  searchResults.innerHTML = "";
+  docs.forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'result-row';
+    row.tabIndex = 0;
+    row.innerHTML = `
+      <img src="${OL_COVER(d.cover_i, 'S')}" alt="">
+      <div class="result-meta">
+        <div class="r-title">${escapeHtml(d.title || 'Untitled')}</div>
+        <div class="r-author">${escapeHtml((d.author_name || []).join(', '))}</div>
+      </div>`;
+    row.addEventListener('click', () => selectBook(d));
+    searchResults.appendChild(row);
+  });
+}
+
+function selectBook(d){
+  pendingBook = {
+    key: d.key,
+    title: d.title || 'Untitled',
+    author: (d.author_name || []).join(', '),
+    cover: d.cover_i || null,
+    subjects: (d.subject || []).slice(0,5)
+  };
+  document.getElementById('rbTitle').textContent = pendingBook.title;
+  document.getElementById('rbAuthor').textContent = pendingBook.author;
+  document.getElementById('rbCover').src = OL_COVER(pendingBook.cover, 'M');
+  document.getElementById('tagsInput').value = pendingBook.subjects.join(', ');
+  document.getElementById('noteInput').value = "";
+  pendingRating = 0;
+  updateStars(starInput, pendingRating);
+  document.getElementById('ratingValue').textContent = "";
+  document.getElementById('reviewForm').classList.add('active');
+  searchResults.innerHTML = "";
+  searchInput.value = "";
+}
+
+// ---- Stars ----
+const starInput = document.getElementById('starInput');
+const ratingValueEl = document.getElementById('ratingValue');
+
+starInput.querySelectorAll('.star-slot').forEach(slot => {
+  slot.addEventListener('click', (e) => {
+    const rect = slot.getBoundingClientRect();
+    const isLeftHalf = (e.clientX - rect.left) < rect.width / 2;
+    const idx = parseInt(slot.dataset.i);
+    pendingRating = isLeftHalf ? idx - 0.5 : idx;
+    updateStars(starInput, pendingRating);
+    ratingValueEl.textContent = pendingRating + " / 5";
+  });
+});
+
+// Keyboard support: arrow keys adjust by half a star
+starInput.addEventListener('keydown', (e) => {
+  if(e.key === 'ArrowRight' || e.key === 'ArrowUp'){
+    pendingRating = Math.min(5, (pendingRating || 0) + 0.5);
+  } else if(e.key === 'ArrowLeft' || e.key === 'ArrowDown'){
+    pendingRating = Math.max(0, (pendingRating || 0) - 0.5);
+  } else { return; }
+  e.preventDefault();
+  updateStars(starInput, pendingRating);
+  ratingValueEl.textContent = pendingRating ? pendingRating + " / 5" : "";
+});
+
+// Fills a star-slot widget's front layer to reflect a rating value (0–5, half-steps)
+function updateStars(container, value){
+  container.querySelectorAll('.star-slot').forEach(slot => {
+    const idx = parseInt(slot.dataset.i);
+    const fill = Math.max(0, Math.min(1, value - (idx - 1)));
+    slot.querySelector('.star-front').style.width = (fill * 100) + '%';
+  });
+  container.setAttribute('aria-valuenow', value);
+}
+
+// Builds static (non-interactive) star markup for displaying a saved rating
+function starDisplayHTML(rating){
+  let html = '<span class="stars-static">';
+  for(let i = 1; i <= 5; i++){
+    const fill = Math.max(0, Math.min(1, rating - (i - 1)));
+    html += `<span class="star-slot"><span class="star-back">★</span><span class="star-front" style="width:${fill * 100}%">★</span></span>`;
+  }
+  html += `</span>`;
+  return html;
+}
+
+document.getElementById('cancelReview').addEventListener('click', () => {
+  document.getElementById('reviewForm').classList.remove('active');
+  pendingBook = null;
+});
+
+// ---- Save review ----
+document.getElementById('reviewForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if(!pendingBook) return;
+  if(pendingRating === 0){ alert("Pick a star rating first."); return; }
+  const tags = document.getElementById('tagsInput').value
+    .split(',').map(t => t.trim()).filter(Boolean);
+  const note = document.getElementById('noteInput').value.trim();
+  const saveBtn = e.target.querySelector('button[type="submit"]');
+  saveBtn.disabled = true;
+  try{
+    await addBookToShelf({ ...pendingBook, rating: pendingRating, tags, note });
+    document.getElementById('reviewForm').classList.remove('active');
+    pendingBook = null;
+  }catch(err){
+    alert("Couldn't save that book — check your connection and try again.");
+  }finally{
+    saveBtn.disabled = false;
+  }
+});
+
+// ---- Render shelf ----
+let selectedIds = new Set();
+
+function renderShelf(){
+  const el = document.getElementById('shelfList');
+  selectedIds.clear();
+  updateSelectionToolbar();
+  if(shelf.length === 0){
+    el.innerHTML = `<p class="empty">Nothing logged yet — search for a book above to begin.</p>`;
+    return;
+  }
+  el.innerHTML = "";
+  shelf.forEach((b) => {
+    const div = document.createElement('div');
+    div.className = 'book-entry';
+    div.innerHTML = `
+      <input type="checkbox" class="sel-check" data-id="${b.id}" aria-label="Select ${escapeHtml(b.title)} for recommendations">
+      <img src="${OL_COVER(b.cover, 'S')}" alt="">
+      <div style="flex:1">
+        <div class="bt">${escapeHtml(b.title)}</div>
+        <div class="ba">${escapeHtml(b.author)}</div>
+        ${starDisplayHTML(b.rating)}
+        <div class="tags">${b.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>
+        ${b.note ? `<div class="note">"${escapeHtml(b.note)}"</div>` : ''}
+      </div>
+      <div class="entry-actions"><button data-id="${b.id}" class="remove-btn">remove</button></div>
+    `;
+    el.appendChild(div);
+  });
+  el.querySelectorAll('.remove-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try{ await removeBookFromShelf(btn.dataset.id); }
+      catch(err){ alert("Couldn't remove that book — try again."); btn.disabled = false; }
+    });
+  });
+  el.querySelectorAll('.sel-check').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if(cb.checked) selectedIds.add(cb.dataset.id); else selectedIds.delete(cb.dataset.id);
+      updateSelectionToolbar();
+    });
+  });
+}
+
+function updateSelectionToolbar(){
+  const count = selectedIds.size;
+  document.getElementById('selCount').textContent = count === 1 ? "1 selected" : `${count} selected`;
+  document.getElementById('recFromSelectionBtn').disabled = count === 0;
+  if(count === 0){
+    document.getElementById('selectionRecArea').classList.remove('active');
+  }
+}
+
+// ---- Recommendations ----
+
+// Given a list of tags, queries Open Library's top 3 most-common tags for English-language works,
+// skipping anything already on the shelf. Shared by both recommendation features.
+async function fetchRecsForTags(tags, alreadyHave){
+  const tagCounts = {};
+  tags.forEach(t => {
+    const key = t.toLowerCase();
+    tagCounts[key] = (tagCounts[key] || 0) + 1;
+  });
+  const topTags = Object.entries(tagCounts).sort((a,b) => b[1]-a[1]).slice(0,3).map(t => t[0]);
+  if(topTags.length === 0) return { recs: [], topTags };
+
+  let recs = [];
+  for(const tag of topTags){
+    try{
+      const safeTag = tag.replace(/"/g, '');
+      const q = `subject:"${safeTag}" language:eng`;
+      const res = await fetch(`${OL_SEARCH}?q=${encodeURIComponent(q)}&limit=8&fields=key,title,author_name,cover_i,language`);
+      if(!res.ok) continue;
+      const data = await res.json();
+      (data.docs || []).forEach(d => {
+        // Belt-and-suspenders: only keep it if we can confirm English, or language isn't recorded at all
+        if(Array.isArray(d.language) && d.language.length > 0 && !d.language.includes('eng')) return;
+        if(alreadyHave.has((d.title||'').toLowerCase())) return;
+        recs.push({
+          title: d.title,
+          author: (d.author_name||[]).join(', '),
+          cover: d.cover_i || null,
+          why: `similar to your ${tag} favorites`
+        });
+      });
+    }catch(e){ /* skip this tag, try the next */ }
+  }
+
+  const seen = new Set();
+  recs = recs.filter(r => {
+    const k = r.title.toLowerCase();
+    if(seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).slice(0,6);
+
+  return { recs, topTags };
+}
+
+function renderRecCards(gridEl, recs){
+  gridEl.innerHTML = "";
+  recs.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'rec-card';
+    div.innerHTML = `
+      <img src="${OL_COVER(r.cover, 'S')}" alt="">
+      <div>
+        <div class="rc-title">${escapeHtml(r.title)}</div>
+        <div class="rc-author">${escapeHtml(r.author)}</div>
+        <div class="rc-why">${escapeHtml(r.why)}</div>
+      </div>`;
+    gridEl.appendChild(div);
+  });
+}
+
+async function loadRecommendations(){
+  const statusEl = document.getElementById('recStatus');
+  const gridEl = document.getElementById('recGrid');
+  const loved = shelf.filter(b => b.rating >= 4);
+  if(loved.length === 0){
+    statusEl.textContent = "Rate a few books 4★ and up to get suggestions.";
+    statusEl.style.display = "block";
+    gridEl.innerHTML = "";
+    return;
+  }
+  statusEl.textContent = "Finding books like the ones you loved…";
+  statusEl.style.display = "block";
+  gridEl.innerHTML = "";
+
+  const allTags = loved.flatMap(b => b.tags);
+  const alreadyHave = new Set(shelf.map(b => b.title.toLowerCase()));
+  const { recs, topTags } = await fetchRecsForTags(allTags, alreadyHave);
+
+  if(topTags.length === 0){
+    statusEl.textContent = "Add a tag or two to your favorites to get suggestions.";
+    return;
+  }
+  if(recs.length === 0){
+    statusEl.textContent = "Couldn't find fresh suggestions right now — try again shortly.";
+    return;
+  }
+  statusEl.style.display = "none";
+  renderRecCards(gridEl, recs);
+}
+
+// Recommendations based only on the books the user has ticked on their shelf
+async function loadSelectionRecommendations(){
+  const area = document.getElementById('selectionRecArea');
+  const statusEl = document.getElementById('selectionRecStatus');
+  const gridEl = document.getElementById('selectionRecGrid');
+  area.classList.add('active');
+
+  const selected = shelf.filter(b => selectedIds.has(b.id));
+  if(selected.length === 0){
+    statusEl.textContent = "Select one or more books above first.";
+    gridEl.innerHTML = "";
+    return;
+  }
+
+  statusEl.style.display = "block";
+  statusEl.textContent = `Finding books like ${selected.length === 1 ? '"' + selected[0].title + '"' : 'your ' + selected.length + ' selected books'}…`;
+  gridEl.innerHTML = "";
+
+  const allTags = selected.flatMap(b => b.tags);
+  const alreadyHave = new Set(shelf.map(b => b.title.toLowerCase()));
+  const { recs, topTags } = await fetchRecsForTags(allTags, alreadyHave);
+
+  if(topTags.length === 0){
+    statusEl.textContent = "None of the selected books have tags to match on — add some tags first.";
+    return;
+  }
+  if(recs.length === 0){
+    statusEl.textContent = "Couldn't find fresh suggestions for this selection — try again shortly.";
+    return;
+  }
+  statusEl.style.display = "none";
+  renderRecCards(gridEl, recs);
+}
+
+document.getElementById('recFromSelectionBtn').addEventListener('click', loadSelectionRecommendations);
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str == null ? "" : String(str);
+  return d.innerHTML;
+}
+
+// ---- Init ----
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
