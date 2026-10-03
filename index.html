@@ -280,15 +280,77 @@
     margin:0 0 0.7rem;
   }
   footer{ text-align:center; color:var(--ink-soft); font-size:0.8rem; margin-top:3rem; }
+
+  /* --- Auth gate --- */
+  #authGate{ max-width:420px; margin:3rem auto; padding:0 1.25rem; }
+  #authGate h1{ text-align:center; }
+  #authGate .tagline{ text-align:center; margin-bottom:2rem; }
+  .auth-card{
+    border:1px solid var(--rule);
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:0 0 0 4px var(--paper), 0 0 0 5px var(--rule), 0 2px 6px rgba(43,33,23,0.08);
+    padding:1.3rem 1.3rem 1.5rem;
+  }
+  .auth-tabs{ display:flex; gap:1.5rem; margin-bottom:1.1rem; border-bottom:1px solid var(--rule); }
+  .auth-tab{
+    background:none; border:none; padding:0.3rem 0 0.7rem; color:var(--ink-soft);
+    font-family:'Fraunces',serif; font-style:italic; font-size:1.05rem; cursor:pointer;
+    border-bottom:2px solid transparent; margin-bottom:-1px; border-radius:0;
+  }
+  .auth-tab.active{ color:var(--wine-deep); border-bottom-color:var(--wine); }
+  .auth-form{ display:none; }
+  .auth-form.active{ display:block; }
+  .auth-error{ color:var(--wine); font-size:0.85rem; margin:0.6rem 0 0; min-height:1.2em; }
+  .account-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:0.85rem; color:var(--ink-soft); margin-bottom:1.5rem;
+  }
+  .account-bar button{ font-size:0.8rem; padding:0.35rem 0.75rem; }
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div class="wrap" id="authGate" style="display:none;">
+  <h1>Quenta</h1>
+  <p class="tagline">Your own account of what you've read — and what to read next.</p>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button type="button" class="auth-tab active" id="tabLogin">Log in</button>
+      <button type="button" class="auth-tab" id="tabSignup">Sign up</button>
+    </div>
+
+    <form class="auth-form active" id="loginForm">
+      <label for="loginEmail">Email</label>
+      <input type="email" id="loginEmail" required autocomplete="email">
+      <label for="loginPassword">Password</label>
+      <input type="password" id="loginPassword" required autocomplete="current-password">
+      <div class="form-actions"><button type="submit">Log in</button></div>
+      <p class="auth-error" id="loginError"></p>
+    </form>
+
+    <form class="auth-form" id="signupForm">
+      <label for="signupEmail">Email</label>
+      <input type="email" id="signupEmail" required autocomplete="email">
+      <label for="signupPassword">Password (6+ characters)</label>
+      <input type="password" id="signupPassword" required autocomplete="new-password" minlength="6">
+      <div class="form-actions"><button type="submit">Create account</button></div>
+      <p class="auth-error" id="signupError"></p>
+    </form>
+  </div>
+</div>
+
+<div class="wrap" id="appContent" style="display:none;">
   <header class="masthead">
     <h1>Quenta</h1>
     <p class="tagline">Your own account of what you've read — and what to read next.</p>
   </header>
   <p class="masthead-mark">❦</p>
+
+  <div class="account-bar">
+    <span id="accountEmail"></span>
+    <button type="button" class="ghost" id="logoutBtn">Log out</button>
+  </div>
 
   <section id="addSection">
     <h2>Log a book</h2>
@@ -345,25 +407,133 @@
     <div class="rec-grid" id="recGrid"></div>
   </section>
 
-  <footer>Your shelf lives only on this device, in this browser.</footer>
+  <footer>Signed in — your shelf syncs to your account.</footer>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {
+  getFirestore, collection, doc, setDoc, addDoc, deleteDoc,
+  onSnapshot, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCGAiS32ZTZm_ZY5cJ46GwhIC4EQCgCf84",
+  authDomain: "quenta-app.firebaseapp.com",
+  projectId: "quenta-app",
+  storageBucket: "quenta-app.firebasestorage.app",
+  messagingSenderId: "472448310719",
+  appId: "1:472448310719:web:938333bba3cf23f2c1150a"
+};
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+// Turns an email into a safe Firestore document ID (Firestore IDs can't contain "/", and
+// "." in the middle of an ID is allowed but we sanitize anyway to keep this predictable).
+function emailDocId(email){ return email.trim().toLowerCase().replace(/[.#$\[\]]/g, '_'); }
+
+let currentUser = null;
+let unsubscribeShelf = null;
+
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const OL_COVER = (id, size) => id ? `https://covers.openlibrary.org/b/id/${id}-${size}.jpg` : "";
-const STORE_KEY = "quenta_shelf_v1";
 
-let shelf = loadShelf();
+let shelf = [];
 let pendingBook = null;
 let pendingRating = 0;
 
-function loadShelf(){
-  try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
-  catch(e){ return []; }
+// ---- Auth UI wiring ----
+const authGate = document.getElementById('authGate');
+const appContent = document.getElementById('appContent');
+const tabLogin = document.getElementById('tabLogin');
+const tabSignup = document.getElementById('tabSignup');
+const loginForm = document.getElementById('loginForm');
+const signupForm = document.getElementById('signupForm');
+
+tabLogin.addEventListener('click', () => {
+  tabLogin.classList.add('active'); tabSignup.classList.remove('active');
+  loginForm.classList.add('active'); signupForm.classList.remove('active');
+});
+tabSignup.addEventListener('click', () => {
+  tabSignup.classList.add('active'); tabLogin.classList.remove('active');
+  signupForm.classList.add('active'); loginForm.classList.remove('active');
+});
+
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('loginError');
+  errorEl.textContent = "";
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  try{
+    await signInWithEmailAndPassword(auth, email, password);
+  }catch(err){
+    errorEl.textContent = friendlyAuthError(err);
+  }
+});
+
+signupForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('signupError');
+  errorEl.textContent = "";
+  const email = document.getElementById('signupEmail').value.trim();
+  const password = document.getElementById('signupPassword').value;
+  try{
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    // Lay groundwork for the friends feature: a public profile doc and an email→uid lookup
+    await setDoc(doc(db, 'users', cred.user.uid), { email: cred.user.email, createdAt: serverTimestamp() });
+    await setDoc(doc(db, 'emailIndex', emailDocId(cred.user.email)), { uid: cred.user.uid });
+  }catch(err){
+    errorEl.textContent = friendlyAuthError(err);
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+
+function friendlyAuthError(err){
+  const code = err && err.code || "";
+  if(code.includes('email-already-in-use')) return "That email already has an account — try logging in instead.";
+  if(code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) return "Email or password doesn't match an account.";
+  if(code.includes('weak-password')) return "Password needs to be at least 6 characters.";
+  if(code.includes('invalid-email')) return "That doesn't look like a valid email.";
+  return "Something went wrong — try again.";
 }
-function saveShelf(){
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify(shelf)); }
-  catch(e){ console.error("Could not save shelf", e); }
+
+onAuthStateChanged(auth, (user) => {
+  if(unsubscribeShelf){ unsubscribeShelf(); unsubscribeShelf = null; }
+  if(user){
+    currentUser = user;
+    authGate.style.display = 'none';
+    appContent.style.display = 'block';
+    document.getElementById('accountEmail').textContent = user.email;
+    const shelfQuery = query(collection(db, 'users', user.uid, 'books'), orderBy('addedAt', 'desc'));
+    unsubscribeShelf = onSnapshot(shelfQuery, (snapshot) => {
+      shelf = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderShelf();
+      loadRecommendations();
+    });
+  } else {
+    currentUser = null;
+    shelf = [];
+    appContent.style.display = 'none';
+    authGate.style.display = 'block';
+  }
+});
+
+// ---- Shelf storage (Firestore, per account) ----
+function addBookToShelf(bookData){
+  return addDoc(collection(db, 'users', currentUser.uid, 'books'), {
+    ...bookData,
+    addedAt: serverTimestamp()
+  });
+}
+function removeBookFromShelf(bookId){
+  return deleteDoc(doc(db, 'users', currentUser.uid, 'books', bookId));
 }
 
 // ---- Search ----
@@ -491,44 +661,43 @@ document.getElementById('cancelReview').addEventListener('click', () => {
 });
 
 // ---- Save review ----
-document.getElementById('reviewForm').addEventListener('submit', (e) => {
+document.getElementById('reviewForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   if(!pendingBook) return;
   if(pendingRating === 0){ alert("Pick a star rating first."); return; }
   const tags = document.getElementById('tagsInput').value
     .split(',').map(t => t.trim()).filter(Boolean);
   const note = document.getElementById('noteInput').value.trim();
-  shelf.unshift({
-    ...pendingBook,
-    rating: pendingRating,
-    tags,
-    note,
-    addedAt: Date.now()
-  });
-  saveShelf();
-  document.getElementById('reviewForm').classList.remove('active');
-  pendingBook = null;
-  renderShelf();
-  loadRecommendations();
+  const saveBtn = e.target.querySelector('button[type="submit"]');
+  saveBtn.disabled = true;
+  try{
+    await addBookToShelf({ ...pendingBook, rating: pendingRating, tags, note });
+    document.getElementById('reviewForm').classList.remove('active');
+    pendingBook = null;
+  }catch(err){
+    alert("Couldn't save that book — check your connection and try again.");
+  }finally{
+    saveBtn.disabled = false;
+  }
 });
 
 // ---- Render shelf ----
-let selectedIndices = new Set();
+let selectedIds = new Set();
 
 function renderShelf(){
   const el = document.getElementById('shelfList');
-  selectedIndices.clear();
+  selectedIds.clear();
   updateSelectionToolbar();
   if(shelf.length === 0){
     el.innerHTML = `<p class="empty">Nothing logged yet — search for a book above to begin.</p>`;
     return;
   }
   el.innerHTML = "";
-  shelf.forEach((b, i) => {
+  shelf.forEach((b) => {
     const div = document.createElement('div');
     div.className = 'book-entry';
     div.innerHTML = `
-      <input type="checkbox" class="sel-check" data-i="${i}" aria-label="Select ${escapeHtml(b.title)} for recommendations">
+      <input type="checkbox" class="sel-check" data-id="${b.id}" aria-label="Select ${escapeHtml(b.title)} for recommendations">
       <img src="${OL_COVER(b.cover, 'S')}" alt="">
       <div style="flex:1">
         <div class="bt">${escapeHtml(b.title)}</div>
@@ -537,30 +706,27 @@ function renderShelf(){
         <div class="tags">${b.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>
         ${b.note ? `<div class="note">"${escapeHtml(b.note)}"</div>` : ''}
       </div>
-      <div class="entry-actions"><button data-i="${i}" class="remove-btn">remove</button></div>
+      <div class="entry-actions"><button data-id="${b.id}" class="remove-btn">remove</button></div>
     `;
     el.appendChild(div);
   });
   el.querySelectorAll('.remove-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      shelf.splice(parseInt(btn.dataset.i), 1);
-      saveShelf();
-      renderShelf();
-      loadRecommendations();
-      document.getElementById('selectionRecArea').classList.remove('active');
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try{ await removeBookFromShelf(btn.dataset.id); }
+      catch(err){ alert("Couldn't remove that book — try again."); btn.disabled = false; }
     });
   });
   el.querySelectorAll('.sel-check').forEach(cb => {
     cb.addEventListener('change', () => {
-      const i = parseInt(cb.dataset.i);
-      if(cb.checked) selectedIndices.add(i); else selectedIndices.delete(i);
+      if(cb.checked) selectedIds.add(cb.dataset.id); else selectedIds.delete(cb.dataset.id);
       updateSelectionToolbar();
     });
   });
 }
 
 function updateSelectionToolbar(){
-  const count = selectedIndices.size;
+  const count = selectedIds.size;
   document.getElementById('selCount').textContent = count === 1 ? "1 selected" : `${count} selected`;
   document.getElementById('recFromSelectionBtn').disabled = count === 0;
   if(count === 0){
@@ -667,7 +833,7 @@ async function loadSelectionRecommendations(){
   const gridEl = document.getElementById('selectionRecGrid');
   area.classList.add('active');
 
-  const selected = Array.from(selectedIndices).map(i => shelf[i]).filter(Boolean);
+  const selected = shelf.filter(b => selectedIds.has(b.id));
   if(selected.length === 0){
     statusEl.textContent = "Select one or more books above first.";
     gridEl.innerHTML = "";
@@ -703,9 +869,6 @@ function escapeHtml(str){
 }
 
 // ---- Init ----
-renderShelf();
-loadRecommendations();
-
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
