@@ -306,10 +306,64 @@
     display:flex; align-items:center; justify-content:space-between;
     font-size:0.85rem; color:var(--ink-soft); margin-bottom:1.5rem;
   }
+  .account-bar{ justify-content:flex-start; }
   .account-bar button{ font-size:0.8rem; padding:0.35rem 0.75rem; }
+  #accountEmail{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* --- Nav drawer --- */
+  .nav-toggle{
+    background:none; border:1px solid var(--rule); color:var(--ink);
+    width:34px; height:34px; padding:0; font-size:1.1rem; line-height:1;
+    border-radius:var(--radius); flex-shrink:0;
+  }
+  .nav-drawer-overlay{
+    position:fixed; inset:0; background:rgba(43,33,23,0.35);
+    opacity:0; pointer-events:none; transition:opacity 0.2s ease; z-index:40;
+  }
+  .nav-drawer-overlay.open{ opacity:1; pointer-events:auto; }
+  .nav-drawer{
+    position:fixed; top:0; left:0; bottom:0; width:240px; max-width:80vw;
+    background:var(--paper-soft); border-right:1px solid var(--rule);
+    box-shadow:2px 0 10px rgba(43,33,23,0.15);
+    padding:calc(1.5rem + env(safe-area-inset-top,0px)) 1.25rem 1.5rem;
+    z-index:41; transform:translateX(-100%); transition:transform 0.25s ease;
+    overflow-y:auto;
+  }
+  .nav-drawer.open{ transform:translateX(0); }
+  .nav-drawer h2{ margin-top:0; }
+  .nav-item{
+    display:block; width:100%; text-align:left; background:none; border:none;
+    color:var(--ink); font-family:'Fraunces',serif; font-style:italic; font-size:1.05rem;
+    padding:0.6rem 0; cursor:pointer; border-bottom:1px solid var(--rule); border-radius:0;
+  }
+  .nav-item.active{ color:var(--wine-deep); font-weight:600; }
+
+  /* --- Views --- */
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* --- Friends --- */
+  .friend-row{
+    display:flex; align-items:center; gap:0.75rem;
+    padding:0.75rem; margin-bottom:0.5rem;
+    background:var(--card); border:1px solid var(--rule); border-radius:var(--radius);
+    box-shadow:0 1px 2px rgba(43,33,23,0.06);
+  }
+  .friend-row .fr-info{ flex:1; cursor:pointer; min-width:0; }
+  .friend-row .fr-name{ font-family:'Fraunces',serif; font-weight:600; }
+  .friend-row .fr-email{ font-size:0.82rem; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .friend-row button{ font-size:0.82rem; padding:0.4rem 0.8rem; flex-shrink:0; }
 </style>
 </head>
 <body>
+
+<div class="nav-drawer-overlay" id="navOverlay"></div>
+<nav class="nav-drawer" id="navDrawer">
+  <h2>Quenta</h2>
+  <button type="button" class="nav-item active" data-view="viewShelf">My Bookshelf</button>
+  <button type="button" class="nav-item" data-view="viewFriends">Friends</button>
+  <button type="button" class="nav-item" data-view="viewFindFriends">Find Friends</button>
+</nav>
 
 <div class="wrap" id="authGate" style="display:none;">
   <h1>Quenta</h1>
@@ -330,6 +384,8 @@
     </form>
 
     <form class="auth-form" id="signupForm">
+      <label for="signupName">Display name (how friends will see you)</label>
+      <input type="text" id="signupName" required autocomplete="name" maxlength="40">
       <label for="signupEmail">Email</label>
       <input type="email" id="signupEmail" required autocomplete="email">
       <label for="signupPassword">Password (6+ characters)</label>
@@ -348,10 +404,12 @@
   <p class="masthead-mark">❦</p>
 
   <div class="account-bar">
+    <button type="button" class="nav-toggle" id="navToggle" aria-label="Open menu">☰</button>
     <span id="accountEmail"></span>
     <button type="button" class="ghost" id="logoutBtn">Log out</button>
   </div>
 
+  <div id="viewShelf" class="view active">
   <section id="addSection">
     <h2>Log a book</h2>
     <div class="search-row">
@@ -406,6 +464,32 @@
     <div id="recStatus" class="status-msg">Rate a few books 4★ and up to get suggestions.</div>
     <div class="rec-grid" id="recGrid"></div>
   </section>
+  </div>
+
+  <div id="viewFriends" class="view">
+    <section>
+      <h2>Friends</h2>
+      <div id="friendsListWrap">
+        <div id="friendsList"><p class="empty">You're not following anyone yet — try Find Friends.</p></div>
+      </div>
+      <div id="friendShelfWrap" style="display:none;">
+        <button type="button" class="ghost" id="backToFriends" style="margin-bottom:1rem;">← Back to friends</button>
+        <h2 id="friendShelfName"></h2>
+        <div id="friendShelfStatus" class="status-msg"></div>
+        <div id="friendShelfList"></div>
+      </div>
+    </section>
+  </div>
+
+  <div id="viewFindFriends" class="view">
+    <section>
+      <h2>Find Friends</h2>
+      <div class="search-row">
+        <input type="text" id="friendSearchInput" placeholder="Search by name or email…" autocomplete="off">
+      </div>
+      <div id="friendSearchResults"><p class="status-msg">Type a name or email to find friends.</p></div>
+    </section>
+  </div>
 
   <footer>Signed in — your shelf syncs to your account.</footer>
 </div>
@@ -418,7 +502,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
   getFirestore, collection, doc, setDoc, addDoc, deleteDoc,
-  onSnapshot, query, orderBy, serverTimestamp
+  onSnapshot, query, orderBy, serverTimestamp, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -439,6 +523,14 @@ function emailDocId(email){ return email.trim().toLowerCase().replace(/[.#$\[\]]
 
 let currentUser = null;
 let unsubscribeShelf = null;
+let unsubscribeFollowing = null;
+let followingMap = new Map(); // uid -> {displayName, email, since}
+let allUsersCache = null; // refreshed each time Find Friends is opened
+
+// Prefer a display name; fall back to the email's local part for accounts made before this field existed
+function labelFor(u){
+  return (u && u.displayName) ? u.displayName : ((u && u.email) ? u.email.split('@')[0] : 'Someone');
+}
 
 const OL_SEARCH = "https://openlibrary.org/search.json";
 const OL_COVER = (id, size) => id ? `https://covers.openlibrary.org/b/id/${id}-${size}.jpg` : "";
@@ -481,12 +573,12 @@ signupForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const errorEl = document.getElementById('signupError');
   errorEl.textContent = "";
+  const displayName = document.getElementById('signupName').value.trim();
   const email = document.getElementById('signupEmail').value.trim();
   const password = document.getElementById('signupPassword').value;
   try{
     const cred = await createUserWithEmailAndPassword(auth, email, password);
-    // Lay groundwork for the friends feature: a public profile doc and an email→uid lookup
-    await setDoc(doc(db, 'users', cred.user.uid), { email: cred.user.email, createdAt: serverTimestamp() });
+    await setDoc(doc(db, 'users', cred.user.uid), { email: cred.user.email, displayName, createdAt: serverTimestamp() });
     await setDoc(doc(db, 'emailIndex', emailDocId(cred.user.email)), { uid: cred.user.uid });
   }catch(err){
     errorEl.textContent = friendlyAuthError(err);
@@ -506,20 +598,32 @@ function friendlyAuthError(err){
 
 onAuthStateChanged(auth, (user) => {
   if(unsubscribeShelf){ unsubscribeShelf(); unsubscribeShelf = null; }
+  if(unsubscribeFollowing){ unsubscribeFollowing(); unsubscribeFollowing = null; }
   if(user){
     currentUser = user;
     authGate.style.display = 'none';
     appContent.style.display = 'block';
     document.getElementById('accountEmail').textContent = user.email;
+    switchView('viewShelf');
+
     const shelfQuery = query(collection(db, 'users', user.uid, 'books'), orderBy('addedAt', 'desc'));
     unsubscribeShelf = onSnapshot(shelfQuery, (snapshot) => {
       shelf = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       renderShelf();
       loadRecommendations();
     });
+
+    const followingQuery = query(collection(db, 'users', user.uid, 'following'), orderBy('since', 'desc'));
+    unsubscribeFollowing = onSnapshot(followingQuery, (snapshot) => {
+      followingMap.clear();
+      snapshot.docs.forEach(d => followingMap.set(d.id, d.data()));
+      renderFriendsList();
+      if(document.getElementById('viewFindFriends').classList.contains('active')) renderFriendSearchResults();
+    });
   } else {
     currentUser = null;
     shelf = [];
+    followingMap.clear();
     appContent.style.display = 'none';
     authGate.style.display = 'block';
   }
@@ -534,6 +638,179 @@ function addBookToShelf(bookData){
 }
 function removeBookFromShelf(bookId){
   return deleteDoc(doc(db, 'users', currentUser.uid, 'books', bookId));
+}
+
+// ---- Nav drawer ----
+const navToggle = document.getElementById('navToggle');
+const navDrawer = document.getElementById('navDrawer');
+const navOverlay = document.getElementById('navOverlay');
+
+function openDrawer(){ navDrawer.classList.add('open'); navOverlay.classList.add('open'); }
+function closeDrawer(){ navDrawer.classList.remove('open'); navOverlay.classList.remove('open'); }
+navToggle.addEventListener('click', openDrawer);
+navOverlay.addEventListener('click', closeDrawer);
+
+function switchView(viewId){
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === viewId));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
+  closeDrawer();
+  if(viewId === 'viewFriends'){
+    document.getElementById('friendShelfWrap').style.display = 'none';
+    document.getElementById('friendsListWrap').style.display = 'block';
+  }
+  if(viewId === 'viewFindFriends'){
+    refreshAllUsersCache().then(renderFriendSearchResults);
+  }
+}
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => switchView(btn.dataset.view));
+});
+
+// ---- Friends: following ----
+function followUser(uid, profile){
+  return setDoc(doc(db, 'users', currentUser.uid, 'following', uid), {
+    displayName: profile.displayName || '',
+    email: profile.email || '',
+    since: serverTimestamp()
+  });
+}
+function unfollowUser(uid){
+  return deleteDoc(doc(db, 'users', currentUser.uid, 'following', uid));
+}
+
+function renderFriendsList(){
+  const el = document.getElementById('friendsList');
+  if(followingMap.size === 0){
+    el.innerHTML = `<p class="empty">You're not following anyone yet — try Find Friends.</p>`;
+    return;
+  }
+  el.innerHTML = "";
+  followingMap.forEach((data, uid) => {
+    const row = document.createElement('div');
+    row.className = 'friend-row';
+    row.innerHTML = `
+      <div class="fr-info" data-uid="${uid}">
+        <div class="fr-name">${escapeHtml(labelFor(data))}</div>
+        <div class="fr-email">${escapeHtml(data.email || '')}</div>
+      </div>
+      <button type="button" class="ghost unfollow-btn" data-uid="${uid}">Unfollow</button>
+    `;
+    row.querySelector('.fr-info').addEventListener('click', () => openFriendShelf(uid, labelFor(data)));
+    row.querySelector('.unfollow-btn').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      try{ await unfollowUser(uid); } catch(err){ alert("Couldn't unfollow — try again."); btn.disabled = false; }
+    });
+    el.appendChild(row);
+  });
+}
+
+async function openFriendShelf(uid, name){
+  document.getElementById('friendsListWrap').style.display = 'none';
+  const wrap = document.getElementById('friendShelfWrap');
+  wrap.style.display = 'block';
+  document.getElementById('friendShelfName').textContent = name;
+  const statusEl = document.getElementById('friendShelfStatus');
+  const listEl = document.getElementById('friendShelfList');
+  statusEl.textContent = "Loading their shelf…";
+  statusEl.style.display = 'block';
+  listEl.innerHTML = "";
+  try{
+    const q = query(collection(db, 'users', uid, 'books'), orderBy('addedAt', 'desc'));
+    const snap = await getDocs(q);
+    if(snap.empty){
+      statusEl.textContent = `${name} hasn't logged any books yet.`;
+      return;
+    }
+    statusEl.style.display = 'none';
+    snap.docs.forEach(d => {
+      const b = d.data();
+      const div = document.createElement('div');
+      div.className = 'book-entry';
+      div.innerHTML = `
+        <img src="${OL_COVER(b.cover, 'S')}" alt="">
+        <div style="flex:1">
+          <div class="bt">${escapeHtml(b.title)}</div>
+          <div class="ba">${escapeHtml(b.author)}</div>
+          ${starDisplayHTML(b.rating)}
+          <div class="tags">${(b.tags||[]).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>
+          ${b.note ? `<div class="note">"${escapeHtml(b.note)}"</div>` : ''}
+        </div>
+      `;
+      listEl.appendChild(div);
+    });
+  }catch(err){
+    statusEl.textContent = "Couldn't load their shelf right now — try again.";
+  }
+}
+
+document.getElementById('backToFriends').addEventListener('click', () => {
+  document.getElementById('friendShelfWrap').style.display = 'none';
+  document.getElementById('friendsListWrap').style.display = 'block';
+});
+
+// ---- Find Friends ----
+async function refreshAllUsersCache(){
+  try{
+    const snap = await getDocs(collection(db, 'users'));
+    allUsersCache = snap.docs.map(d => ({ uid: d.id, ...d.data() })).filter(u => u.uid !== currentUser.uid);
+  }catch(err){
+    allUsersCache = allUsersCache || [];
+  }
+}
+
+const friendSearchInput = document.getElementById('friendSearchInput');
+let friendSearchTimer = null;
+friendSearchInput.addEventListener('input', () => {
+  clearTimeout(friendSearchTimer);
+  friendSearchTimer = setTimeout(renderFriendSearchResults, 200);
+});
+
+function renderFriendSearchResults(){
+  const el = document.getElementById('friendSearchResults');
+  const qText = friendSearchInput.value.trim().toLowerCase();
+  if(!allUsersCache){
+    el.innerHTML = `<p class="status-msg">Loading people…</p>`;
+    return;
+  }
+  if(qText.length === 0){
+    el.innerHTML = `<p class="status-msg">Type a name or email to find friends.</p>`;
+    return;
+  }
+  const matches = allUsersCache.filter(u =>
+    labelFor(u).toLowerCase().includes(qText) || (u.email||'').toLowerCase().includes(qText)
+  );
+  if(matches.length === 0){
+    el.innerHTML = `<p class="status-msg">No one found with that name or email.</p>`;
+    return;
+  }
+  el.innerHTML = "";
+  matches.forEach(u => {
+    const isFollowing = followingMap.has(u.uid);
+    const row = document.createElement('div');
+    row.className = 'friend-row';
+    row.innerHTML = `
+      <div class="fr-info">
+        <div class="fr-name">${escapeHtml(labelFor(u))}</div>
+        <div class="fr-email">${escapeHtml(u.email || '')}</div>
+      </div>
+      <button type="button" class="${isFollowing ? 'ghost' : ''} follow-btn" data-uid="${u.uid}">${isFollowing ? 'Unfollow' : 'Follow'}</button>
+    `;
+    row.querySelector('.follow-btn').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      try{
+        if(followingMap.has(u.uid)) await unfollowUser(u.uid);
+        else await followUser(u.uid, u);
+      }catch(err){
+        alert("Something went wrong — try again.");
+      }finally{
+        btn.disabled = false;
+      }
+    });
+    el.appendChild(row);
+  });
 }
 
 // ---- Search ----
