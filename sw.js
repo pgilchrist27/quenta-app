@@ -1,4 +1,4 @@
-const CACHE_NAME = "marginalia-v1";
+const CACHE_NAME = "quenta-v2";
 const SHELL_URLS = ["./", "./index.html", "./manifest.json", "./icon.svg"];
 const SHELL_FILENAMES = ["index.html", "manifest.json", "icon.svg"];
 
